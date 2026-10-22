@@ -70,22 +70,47 @@ uvx libresprite-mcp
 
 ### Step 2: Setting up LibreSprite
 
-Download the latest stable remote script `mcp.js` from [releases](https://github.com/Snehil-Shah/libresprite-mcp/releases/latest) and add it to LibreSprite's scripts folder:
+> [!IMPORTANT]
+> Pick the remote script that matches your LibreSprite version.
+>
+> | LibreSprite version | Remote script |
+> | --- | --- |
+> | 1.3 and newer (new async script engine) | `remote/mcp-1.3.js` |
+> | older builds (QtScript engine) | `remote/mcp.js` |
+>
+> LibreSprite 1.3 replaced the script engine: a script's top-level `this` is
+> `undefined`, and `app.yield()` returns a `Promise` instead of raising an
+> event. `mcp.js` relies on both of the old behaviours, so on 1.3 it aborts at
+> load time (`TypeError: cannot read property 'console' of undefined`) and its
+> polling loop never runs. `mcp-1.3.js` implements the same relay protocol on
+> top of `Promise` / `setTimeout` / `storage.fetch` and connects
+> automatically, without the "Connect" button.
+
+Download the remote script and add it to LibreSprite's scripts folder:
 
 ![scripts-folder](https://raw.githubusercontent.com/Snehil-Shah/libresprite-mcp/main/assets/scripts-folder.png)
 
 ### Step 3: Connect and use
 
-Run the `mcp.js` script (that you see in the screenshot above), and make sure your MCP server is running (Claude Desktop/Cursor is loaded and running). If all went well, you should see the following screen:
+Run the script from `File > Scripts` (or start LibreSprite with
+`--script <path-to-script>`) and make sure your MCP server is running
+(Claude Desktop/Cursor is loaded and running).
+
+- `remote/mcp.js`: you should see the following screen. Click the "Connect"
+  button and you can now start talking to Claude about your next big pixel-art
+  project.
+- `remote/mcp-1.3.js`: it connects by itself and logs
+  `[mcp] connected, waiting for agent commands` to the console.
 
 ![connect-button](https://raw.githubusercontent.com/Snehil-Shah/libresprite-mcp/main/assets/connect.png)
-
-Click the "Connect" button and you can now start talking to Claude about your next big pixel-art project!
 
 ## Some pointers
 
 - You can only run one instance of the MCP server at a time.
 - The server expects port `64823` to be free.
+- `ModuleNotFoundError: No module named 'mcp.server.fastmcp'` means the client
+  resolved `mcp 2.x` (FastMCP was renamed there). Upgrade to a release that
+  pins `mcp<2`, or run `uvx --with "mcp<2" libresprite-mcp`.
 - The server has a hacky and brittle implementation (see [ARCHITECTURE](https://github.com/Snehil-Shah/libresprite-mcp/blob/main/ARCHITECTURE.md)), and is not extensively tested.
 - The MCP resources are kinda low quality with unclear API reference and limited examples, leaving the LLM confused at times. If you're a LibreSprite expert, we need your help.
 
