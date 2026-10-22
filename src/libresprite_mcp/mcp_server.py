@@ -26,7 +26,7 @@ class MCPServer:
         """Setup MCP tools."""
 
         @self.mcp.tool()
-        def run_script(script: str, ctx: Context) -> str:
+        async def run_script(script: str, ctx: Context) -> str:
             """
             Run a JavaScript script inside Libresprite.
 
@@ -38,7 +38,7 @@ class MCPServer:
             Returns:
                 Console output
             """
-            return self._libresprite_proxy.run_script(script, ctx)
+            return await self._libresprite_proxy.run_script(script, ctx)
 
     def _setup_resources(self):
         """Setup MCP resources."""
