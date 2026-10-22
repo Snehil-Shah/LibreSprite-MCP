@@ -1,6 +1,6 @@
 [project]
 name = "libresprite-mcp"
-version = "0.1.3"
+version = "0.1.4"
 description = "Prompt your way into LibreSprite"
 readme = "README.md"
 authors = [
