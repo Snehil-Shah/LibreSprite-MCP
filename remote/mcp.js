@@ -3,7 +3,8 @@
  */
 
 // Cache the global context.
-const global = this;
+// NOTE: LibreSprite 1.3+ runs scripts as ES modules, where top-level `this` is undefined.
+const global = typeof globalThis !== 'undefined' ? globalThis : this;
 
 /**
  * Model Context Protocol (MCP) remote script that interacts with the libresprite-mcp server.
@@ -22,6 +23,11 @@ const global = this;
      * Delay between polling requests. (in number of rendering cycles)
      */
     const POLL_DELAY = 120;
+
+    /**
+     * Flag indicating whether the script is running on the LibreSprite 1.3+ scripting engine.
+     */
+    const NEW_ENGINE = typeof setTimeout === 'function';
 
 
     // VARIABLES //
@@ -73,6 +79,16 @@ const global = this;
      */
     let dialog = null;
 
+    /**
+     * Status label in the UI dialog.
+     */
+    let statusLabel = null;
+
+    /**
+     * Connect/Disconnect button in the UI dialog.
+     */
+    let toggleButton = null;
+
 
     // FUNCTIONS //
 
@@ -91,6 +107,23 @@ const global = this;
         var args = Array.prototype.slice.call(arguments);
         output += args.join(' ') + '\n';
         _clientLogger.apply(null, args);
+    }
+
+    /**
+     * Raises an event after the given number of rendering cycles.
+     *
+     * NOTE: In LibreSprite 1.3+, `app.yield()` returns a Promise instead of raising an event, so we use timers instead.
+     *
+     * @param {string} event - event to raise
+     * @param {number} [cycles] - delay (in number of rendering cycles)
+     */
+    function yieldEvent(event, cycles) {
+        if (NEW_ENGINE) {
+            // A rendering cycle is a ~10ms tick...
+            setTimeout(function() { onEvent(event); }, (cycles || 0) * 10);
+            return;
+        }
+        app.yield(event, cycles);
     }
 
     /**
@@ -182,15 +215,15 @@ const global = this;
         get(RELAY_SERVER_URL + '/ping', function(data, error) {
             if (error) {
                 connected = false;
-                app.yield("bad_health", POLL_DELAY);
+                yieldEvent("bad_health", POLL_DELAY);
                 return;
             }
             if (data && data.status === 'pong') {
                 connected = true;
-                app.yield("good_health");
+                yieldEvent("good_health");
             } else {
                 connected = false;
-                app.yield("bad_health", POLL_DELAY);
+                yieldEvent("bad_health", POLL_DELAY);
             }
 
         });
@@ -222,8 +255,9 @@ const global = this;
             if (error) {
                 _clientLogger('The MCP server was shut down.');
                 connected = false;
+                stopPolling();
                 paintUI();
-                app.yield("bad_health", POLL_DELAY);
+                yieldEvent("bad_health", POLL_DELAY);
                 return;
             }
             if ( !data ) {
@@ -237,7 +271,7 @@ const global = this;
             if (!polling) {
                 return;
             }
-            app.yield("poll", POLL_DELAY);
+            yieldEvent("poll", POLL_DELAY);
         });
     }
 
@@ -292,28 +326,28 @@ const global = this;
      * Paints the UI dialog based on the current state.
      */
     function paintUI() {
-        let label;
+        let label, button;
         if (!connected) {
             label = 'Discovering MCP servers... Make sure the libresprite-mcp server is running.';
+            button = 'Waiting...';
         } else if (polling) {
             label = 'Connected to the libresprite-mcp server!';
+            button = 'Disconnect';
         } else {
             label = 'Found an active libresprite-mcp server, "Connect" when you are ready!';
+            button = 'Connect';
         }
+        // NOTE: LibreSprite 1.3+ only shows dialogs created while the script is loading, so we create the dialog once and update it in place.
         if (dialog) {
-            dialog.close();
+            statusLabel.text = label;
+            toggleButton.text = button;
+            return;
         }
         dialog = app.createDialog();
         dialog.title = 'libresprite-mcp';
-        dialog.addLabel(label);
+        statusLabel = dialog.addLabel(label, 'status');
         dialog.addBreak();
-        dialog.canClose = !connected || !polling;
-        if ( connected ) {
-            dialog.addButton(
-                polling ? 'Disconnect': 'Connect',
-                'toggle'
-            );
-        }
+        toggleButton = dialog.addButton(button, 'toggle');
     }
 
 
@@ -360,6 +394,10 @@ const global = this;
              * UI operation.
              */
             case 'toggle_click':
+                if (!connected) {
+                    // The button is visible before a server is found, ignore clicks until then...
+                    return;
+                }
                 if (polling) {
                     stopPolling();
                 } else {

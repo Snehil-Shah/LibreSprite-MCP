@@ -86,6 +86,7 @@ Click the "Connect" button and you can now start talking to Claude about your ne
 
 - You can only run one instance of the MCP server at a time.
 - The server expects port `64823` to be free.
+- Running another script while connected disconnects `mcp.js`. Re-run `mcp.js` to reconnect.
 - The server has a hacky and brittle implementation (see [ARCHITECTURE](https://github.com/Snehil-Shah/libresprite-mcp/blob/main/ARCHITECTURE.md)), and is not extensively tested.
 - The MCP resources are kinda low quality with unclear API reference and limited examples, leaving the LLM confused at times. If you're a LibreSprite expert, we need your help.
 
