@@ -9,7 +9,7 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     "flask>=3.1.1",
-    "mcp[cli]>=1.12.2",
+    "mcp[cli]>=1.21.1,<2",
 ]
 
 [project.scripts]
