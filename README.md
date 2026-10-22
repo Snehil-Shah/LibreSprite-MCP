@@ -82,6 +82,19 @@ Run the `mcp.js` script (that you see in the screenshot above), and make sure yo
 
 Click the "Connect" button and you can now start talking to Claude about your next big pixel-art project!
 
+## Reading pixels
+
+The `read_pixel(x, y)` tool reads the active layer/frame's cel image without
+editing it. Coordinates are zero-based integers relative to that image's top-left
+corner; a cel's offset on the sprite canvas is not added. Bounds are checked
+against the active image, which can be smaller than the canvas.
+
+The result includes `x`, `y`, `color_mode` and the unsigned stored `value`.
+RGB and grayscale results include `rgba` channels in the range 0–255. Indexed
+results include `palette_index` instead of RGBA: it is the stored palette index,
+not the displayed/composited color. Missing images, unsupported formats and
+invalid coordinates return tool errors. This tool does not flatten layers.
+
 ## Some pointers
 
 - You can only run one instance of the MCP server at a time.

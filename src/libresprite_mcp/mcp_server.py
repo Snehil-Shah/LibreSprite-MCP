@@ -2,7 +2,10 @@
 MCP server implementation that exposes tools for interacting with the libresprite-proxy server.
 """
 
+import asyncio
+import json
 import os
+from pydantic import StrictInt
 from mcp.server.fastmcp import FastMCP, Context
 from .libresprite_proxy import LibrespriteProxy
 
@@ -39,6 +42,87 @@ class MCPServer:
                 Console output
             """
             return await self._libresprite_proxy.run_script(script, ctx)
+
+        @self.mcp.tool()
+        async def read_pixel(x: StrictInt, y: StrictInt, ctx: Context) -> dict:
+            """Read a pixel in the active layer/frame's cel image without editing it.
+
+            x and y are zero-based integer image-local coordinates, not canvas
+            coordinates. RGB/grayscale return RGBA channels (0-255); indexed
+            images return the stored palette index, not a composited color.
+            Missing images, unsupported formats and out-of-bounds coordinates
+            produce an error.
+            """
+            script = """
+(function () {
+    var image = app.activeImage;
+    if (!image) {
+        console.log(JSON.stringify({error: "No active image in the current layer/frame."}));
+        return;
+    }
+    var x = X_COORD, y = Y_COORD;
+    if (x < 0 || y < 0 || x >= image.width || y >= image.height) {
+        console.log(JSON.stringify({error: "Pixel coordinates are outside the active image."}));
+        return;
+    }
+    var mode = image.format;
+    if (mode !== ColorMode.RGB && mode !== ColorMode.GRAYSCALE && mode !== ColorMode.INDEXED) {
+        console.log(JSON.stringify({error: "Unsupported active image color mode."}));
+        return;
+    }
+    // Native helpers on older builds accept signed 32-bit packed colors.
+    var value = image.getPixel(x, y) | 0;
+    var result = {x: x, y: y, value: value >>> 0};
+    var pc = app.pixelColor;
+    if (mode === ColorMode.RGB) {
+        result.color_mode = "rgb";
+        result.rgba = [pc.rgbaR(value), pc.rgbaG(value), pc.rgbaB(value), pc.rgbaA(value)];
+    } else if (mode === ColorMode.GRAYSCALE) {
+        result.color_mode = "grayscale";
+        var gray = pc.grayaV(value);
+        result.rgba = [gray, gray, gray, pc.grayaA(value)];
+    } else {
+        result.color_mode = "indexed";
+        result.palette_index = value;
+    }
+    console.log(JSON.stringify(result));
+})();
+""".replace("X_COORD", str(x)).replace("Y_COORD", str(y))
+            output = await asyncio.to_thread(self._libresprite_proxy.run_script, script, ctx)
+            try:
+                result = json.loads(output)
+            except (TypeError, ValueError) as exc:
+                raise RuntimeError("LibreSprite did not return a valid pixel result: " + str(output)) from exc
+            if not isinstance(result, dict):
+                raise RuntimeError("LibreSprite did not return a valid pixel result object.")
+            if "error" in result:
+                raise RuntimeError(result["error"])
+            value = result.get("value")
+            mode = result.get("color_mode")
+            if (type(result.get("x")) is not int or result["x"] != x
+                    or type(result.get("y")) is not int or result["y"] != y
+                    or type(value) is not int or not 0 <= value <= 4294967295
+                    or mode not in ("rgb", "grayscale", "indexed")):
+                raise RuntimeError("LibreSprite did not return a valid pixel result.")
+            if mode == "indexed":
+                index = result.get("palette_index")
+                if type(index) is not int or index < 0 or index != value:
+                    raise RuntimeError("LibreSprite did not return a valid indexed pixel result.")
+            else:
+                rgba = result.get("rgba")
+                if (not isinstance(rgba, list) or len(rgba) != 4
+                        or any(type(channel) is not int or not 0 <= channel <= 255 for channel in rgba)
+                        or (mode == "grayscale" and value > 65535)):
+                    raise RuntimeError("LibreSprite did not return a valid RGBA pixel result.")
+                if mode == "rgb":
+                    expected_value = sum(channel << (8 * position) for position, channel in enumerate(rgba))
+                else:
+                    if rgba[0] != rgba[1] or rgba[0] != rgba[2]:
+                        raise RuntimeError("LibreSprite did not return consistent grayscale channels.")
+                    expected_value = rgba[0] | (rgba[3] << 8)
+                if value != expected_value:
+                    raise RuntimeError("LibreSprite did not return a consistent packed pixel value.")
+            return result
 
     def _setup_resources(self):
         """Setup MCP resources."""
