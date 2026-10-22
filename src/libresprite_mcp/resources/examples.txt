@@ -40,8 +40,12 @@ for (y=0; y<img.height; ++y) {
 
 ## PerLineOscillation
 
+Animates the active layer with a wave effect, one new frame per step.
+
 ```javascript
-var dialog;
+const frameCount = 10; // Frames to animate
+const waveSize = 8;    // Wave size, 3-100
+const effect = 0;      // Effect to use, 0-4
 
 function wrap(x, n) {
     if (x < 0)
@@ -159,56 +163,27 @@ const effects = [
     }
 ];
 
-const eventHandlers = {
-    init:function(){
-        if (!app.activeSprite) {
-            app.createDialog('Error').addLabel('Need an image to oscillate.');
-            return;
-        }
+if (!app.activeSprite) {
+    console.log('Need an image to oscillate.');
+} else {
+    app.command.setParameter("format", "rgb");
+    app.command.ChangePixelFormat();
+    app.command.clearParameters();
 
-        if (dialog)
-            dialog.close();
-        dialog = app.createDialog('dialog');
-        dialog.addIntEntry("Frames to animate:", "frameCount", 0, 100);
-        dialog.addBreak();
-        dialog.addIntEntry("Wave size:", "waveSize", 3, 100);
-        dialog.addBreak();
-        dialog.addIntEntry("Effect:", "effect", 0, effects.length - 1);
-        dialog.addBreak();
-        dialog.addButton("Run", "run");
-    },
+    const oscillate = effects[effect] || effects[0];
+    const sprite = app.activeSprite;
+    const layerNumber = app.activeLayerNumber;
+    const reference = sprite.layer(layerNumber).cel(0).image;
+    const refWidth = reference.width;
+    const refHeight = reference.height;
+    const src = reference.getImageData();
 
-    run_click:function(){
-        dialog.close();
-        dialog = null;
-
-	app.command.setParameter("format", "rgb");
-	app.command.ChangePixelFormat();
-	app.command.clearParameters();
-
-        const frameCount = storage.get("frameCount")|0;
-        const waveSize = storage.get("waveSize")|0;
-	const effect = storage.get("effect")|0;
-	const oscillate = effects[effect] || effects[0];
-        const sprite = app.activeSprite;
-        const layerNumber = app.activeLayerNumber;
-        const reference = sprite.layer(layerNumber).cel(0).image;
-        const refWidth = reference.width;
-        const refHeight = reference.height;
-        const src = reference.getImageData();
-
-        app.command.setParameter("content", "current");
-        for (var i = 0; i < frameCount; ++i) {
-            if (i)
-                app.command.NewFrame();
-            sprite.layer(layerNumber).cel(i).image.putImageData(oscillate(src, i / frameCount, refWidth, refHeight, waveSize));
-        }
+    app.command.setParameter("content", "current");
+    for (var i = 0; i < frameCount; ++i) {
+        if (i)
+            app.command.NewFrame();
+        sprite.layer(layerNumber).cel(i).image.putImageData(oscillate(src, i / frameCount, refWidth, refHeight, waveSize));
     }
-};
-
-function onEvent(eventName) {
-    var handler = eventHandlers[eventName];
-    if (typeof handler == 'function')
-        handler();
+    console.log('Animated ' + frameCount + ' frames.');
 }
 ```

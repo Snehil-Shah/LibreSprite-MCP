@@ -1,3 +1,12 @@
+# How your script runs
+   - Everything you print with `console.log()` is returned as the result. Print whatever you need to see.
+   - Errors thrown by your script are caught and returned as `Error in script: <message>`.
+   - The result is returned as soon as your script finishes. Top-level `await` is not available, and output from timers or promises that run later is not returned.
+   - Do NOT define `onEvent`, call `setEventHandler()` or call `app.yield()`. The remote script uses events to talk to the MCP server, and replacing its event handler disconnects it.
+   - Do NOT create dialogs or call `storage.fetch()`. Their events go to the remote script, not yours, and on LibreSprite 1.3+ dialogs created at this point are never shown.
+
+
+
 # [class Sprite]
 ## Properties:
    - `palette`: read-only. Returns the sprite's palette.
@@ -67,22 +76,12 @@
 
    - `fetch()`:
       returns: Nothing
+      Do not use, see "How your script runs".
 
    - `load()`:
       returns: Nothing
 
    - `unload()`:
-      returns: Nothing
-
-
-
-# [class PalettelistboxWidget]
-## Properties:
-   - `selected`:
-   - `id`:
-
-## Methods:
-   - `addPalette()`:
       returns: Nothing
 
 
@@ -136,14 +135,6 @@
 
 
 
-# [class LabelWidget]
-## Properties:
-   - `text`:
-   - `id`:
-
-## No Methods.
-
-
 # [class Layer]
 ## Properties:
    - `flags`: read-only. Returns all flags OR'd together as an int
@@ -163,16 +154,6 @@
       returns: A Cel object or null if an invalid index is passed
       retrieves a Cel
 
-
-
-# [class IntentryWidget]
-## Properties:
-   - `value`:
-   - `min`:
-   - `max`:
-   - `id`:
-
-## No Methods.
 
 
 # [class Image]
@@ -216,45 +197,6 @@
 
 
 
-# [class PN2ui6DialogE]
-## Properties:
-   - `canClose`: write only. Determines if the user can close the dialog window.
-   - `title`: read+write. Sets the title of the dialog window.
-   - `id`:
-
-## Methods:
-   - `addBreak()`:
-      returns: Nothing
-
-   - `addPaletteListBox()`:
-      returns: Nothing
-
-   - `addEntry()`:
-      returns: Nothing
-
-   - `addButton()`:
-      returns: Nothing
-
-   - `add()`:
-      returns: Nothing
-
-   - `close()`:
-      returns: Nothing
-
-   - `addLabel()`:
-      returns: Nothing
-
-   - `addDropDown()`:
-      returns: Nothing
-
-   - `addIntEntry()`:
-      returns: Nothing
-
-   - `get()`:
-      returns: Nothing
-
-
-
 # global console [class Console]
 ## No Properties.
 
@@ -265,14 +207,6 @@
    - `log()`:
       returns: Nothing
 
-
-
-# [class ButtonWidget]
-## Properties:
-   - `text`:
-   - `id`:
-
-## No Methods.
 
 
 # [class command]
@@ -728,7 +662,7 @@
 
    - `Exit()`:
       returns: Nothing
-      Exit
+      Exit (LibreSprite 1.2 only)
 
    - `ColorQuantization()`:
       returns: Nothing
@@ -780,7 +714,7 @@
 
    - `CloseAllFiles()`:
       returns: Nothing
-      Close All Files
+      Close All Files (LibreSprite 1.2 only)
 
    - `LoadPalette()`:
       returns: Nothing
@@ -824,7 +758,11 @@
 
    - `CloseFile()`:
       returns: Nothing
-      Close File
+      Close File (LibreSprite 1.2 only)
+
+   - `ResetSymmetry()`:
+      returns: Nothing
+      Reset Symmetry (LibreSprite 1.3+ only)
 
    - `ToggleTouchbar()`:
       returns: Nothing
@@ -841,15 +779,6 @@
    - `setParameter()`:
       returns: Nothing
 
-
-
-# [class EntryWidget]
-## Properties:
-   - `value`:
-   - `maxsize`:
-   - `id`:
-
-## No Methods.
 
 
 # [class Palette]
@@ -920,13 +849,10 @@
 
    - `yield(event)`:
      - event: Name of the event to be raised. The default is yield.
-      returns: Nothing
-      Schedules a yield event on the next frame
+      returns: Nothing on LibreSprite 1.2, a Promise on 1.3+
+      Do not use, see "How your script runs". On LibreSprite 1.2 it raises an event on the next frame; on 1.3+ it returns a Promise that resolves on the next tick.
 
    - `createDialog()`:
-      returns: Nothing
-      Creates a dialog window
-
-   - `documentation()`:
-      returns: Nothing
+      returns: A Dialog
+      Creates a dialog window. Do not use, see "How your script runs".
       Prints this text.
